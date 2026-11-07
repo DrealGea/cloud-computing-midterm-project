@@ -1,0 +1,118 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Buku Tamu Digital Kampus</title>
+<style>
+  :root { --bg:#f4f6fb; --card:#fff; --text:#1f2937; --muted:#6b7280; --accent:#c8102e; --border:#e5e7eb; }
+  @media (prefers-color-scheme: dark) {
+    :root { --bg:#111827; --card:#1f2937; --text:#f3f4f6; --muted:#9ca3af; --border:#374151; }
+  }
+  * { box-sizing: border-box; }
+  body { margin:0; font-family: system-ui, sans-serif; background:var(--bg); color:var(--text); }
+  main { max-width: 680px; margin: 0 auto; padding: 24px 16px; }
+  h1 { margin: 0 0 4px; }
+  .sub { color: var(--muted); margin-bottom: 20px; }
+  .card { background:var(--card); border:1px solid var(--border); border-radius:12px; padding:16px; margin-bottom:16px; }
+  input, textarea { width:100%; padding:10px; margin-bottom:10px; border:1px solid var(--border);
+    border-radius:8px; background:var(--bg); color:var(--text); font:inherit; }
+  button { background:var(--accent); color:#fff; border:0; padding:10px 16px; border-radius:8px; cursor:pointer; font:inherit; }
+  button.del { background:transparent; color:var(--accent); border:1px solid var(--accent); padding:4px 10px; }
+  .entry { display:flex; justify-content:space-between; gap:12px; align-items:flex-start;
+    padding:12px 0; border-bottom:1px solid var(--border); }
+  .entry:last-child { border-bottom:0; }
+  .entry p { margin:4px 0 0; color:var(--muted); }
+  #status { color:var(--accent); min-height:1.2em; margin-top:6px; }
+</style>
+</head>
+<body>
+<main>
+  <h1>Buku Tamu Digital Kampus</h1>
+  <div class="sub">Telkom University &middot; Cloud Computing</div>
+
+  <div class="card">
+    <input id="name" placeholder="Nama tamu" maxlength="100">
+    <textarea id="message" rows="3" placeholder="Pesan / kesan" maxlength="500"></textarea>
+    <button id="add">Kirim</button>
+    <div id="status"></div>
+  </div>
+
+  <div class="card">
+    <strong>Daftar tamu (<span id="total">0</span>)</strong>
+    <div id="list"></div>
+  </div>
+</main>
+
+<script>
+// Lewat Nginx (port 80/8081) -> pakai proxy /api. Dibuka dari server lain -> langsung ke backend.
+const API_BASE = ['', '80', '8081'].includes(location.port) ? '/api' : 'http://localhost:5000';
+const API = API_BASE + '/messages';
+const $ = id => document.getElementById(id);
+
+function setStatus(t) { $('status').textContent = t; }
+
+function render(items) {
+  $('total').textContent = items.length;
+  const list = $('list');
+  list.innerHTML = '';
+  if (!items.length) {
+    list.innerHTML = '<p style="color:var(--muted)">Belum ada tamu.</p>';
+    return;
+  }
+  items.forEach((it, i) => {
+    const row = document.createElement('div');
+    row.className = 'entry';
+    const info = document.createElement('div');
+    const n = document.createElement('strong');
+    n.textContent = it.name;
+    const m = document.createElement('p');
+    m.textContent = it.message;
+    info.append(n, m);
+    const b = document.createElement('button');
+    b.className = 'del';
+    b.textContent = 'Hapus';
+    b.onclick = () => remove(i);
+    row.append(info, b);
+    list.append(row);
+  });
+}
+
+async function load() {
+  try {
+    const res = await fetch(API);
+    const json = await res.json();
+    render(json.data);
+  } catch (e) { setStatus('Gagal memuat data dari backend.'); }
+}
+
+async function add() {
+  const name = $('name').value.trim();
+  const message = $('message').value.trim();
+  try {
+    const res = await fetch(API, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ name, message })
+    });
+    const json = await res.json();
+    if (!res.ok) { setStatus(json.error); return; }
+    $('name').value = ''; $('message').value = ''; setStatus('');
+    load();
+  } catch (e) { setStatus('Gagal mengirim data.'); }
+}
+
+async function remove(index) {
+  try {
+    const res = await fetch(API + '?index=' + index, { method: 'DELETE' });
+    if (!res.ok) { setStatus((await res.json()).error); }
+    load();
+  } catch (e) { setStatus('Gagal menghapus data.'); }
+}
+
+$('add').onclick = add;
+load();
+setInterval(load, 5000);  // refresh otomatis
+</script>
+</body>
+</html>
