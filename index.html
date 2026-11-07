@@ -5,43 +5,142 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Buku Tamu Digital Kampus</title>
 <style>
-  :root { --bg:#f4f6fb; --card:#fff; --text:#1f2937; --muted:#6b7280; --accent:#c8102e; --border:#e5e7eb; }
+  :root {
+    --bg1:#e6fbf3; --bg2:#ece9ff; --bg3:#ffe9f1;
+    --card:rgba(255,255,255,.72); --card-border:rgba(255,255,255,.9);
+    --text:#2a2a40; --muted:#7a7a95; --line:rgba(120,110,170,.16);
+    --accent:#7c6cf0; --accent2:#4fd1b5; --danger:#ef5b7b;
+    --shadow:0 10px 40px rgba(124,108,240,.14);
+    --input:rgba(255,255,255,.85);
+  }
   @media (prefers-color-scheme: dark) {
-    :root { --bg:#111827; --card:#1f2937; --text:#f3f4f6; --muted:#9ca3af; --border:#374151; }
+    :root {
+      --bg1:#14182b; --bg2:#1c1838; --bg3:#2a1a33;
+      --card:rgba(34,34,58,.72); --card-border:rgba(255,255,255,.08);
+      --text:#f1f0ff; --muted:#a2a1c4; --line:rgba(255,255,255,.1);
+      --shadow:0 10px 40px rgba(0,0,0,.35);
+      --input:rgba(255,255,255,.06);
+    }
   }
   * { box-sizing: border-box; }
-  body { margin:0; font-family: system-ui, sans-serif; background:var(--bg); color:var(--text); }
-  main { max-width: 680px; margin: 0 auto; padding: 24px 16px; }
-  h1 { margin: 0 0 4px; }
-  .sub { color: var(--muted); margin-bottom: 20px; }
-  .card { background:var(--card); border:1px solid var(--border); border-radius:12px; padding:16px; margin-bottom:16px; }
-  input, textarea { width:100%; padding:10px; margin-bottom:10px; border:1px solid var(--border);
-    border-radius:8px; background:var(--bg); color:var(--text); font:inherit; }
-  button { background:var(--accent); color:#fff; border:0; padding:10px 16px; border-radius:8px; cursor:pointer; font:inherit; }
-  button.del { background:transparent; color:var(--accent); border:1px solid var(--accent); padding:4px 10px; }
-  .entry { display:flex; justify-content:space-between; gap:12px; align-items:flex-start;
-    padding:12px 0; border-bottom:1px solid var(--border); }
-  .entry:last-child { border-bottom:0; }
-  .entry p { margin:4px 0 0; color:var(--muted); }
-  #status { color:var(--accent); min-height:1.2em; margin-top:6px; }
+  html { min-height: 100%; }
+  body {
+    margin: 0; min-height: 100vh; color: var(--text);
+    font-family: "Segoe UI", system-ui, -apple-system, Roboto, sans-serif;
+    background:
+      radial-gradient(900px 500px at 10% -10%, var(--bg1), transparent 60%),
+      radial-gradient(800px 500px at 100% 0%, var(--bg2), transparent 55%),
+      radial-gradient(800px 600px at 50% 110%, var(--bg3), transparent 60%),
+      var(--bg2);
+    background-attachment: fixed;
+  }
+  main { max-width: 720px; margin: 0 auto; padding: 40px 18px 56px; }
+
+  header { text-align: center; margin-bottom: 28px; }
+  .chip {
+    display: inline-block; padding: 6px 14px; border-radius: 999px; font-size: .78rem;
+    letter-spacing: .04em; color: var(--accent); background: var(--card);
+    border: 1px solid var(--card-border); box-shadow: var(--shadow);
+  }
+  h1 {
+    margin: 16px 0 6px; font-size: clamp(1.8rem, 5vw, 2.5rem); line-height: 1.15;
+    background: linear-gradient(120deg, var(--accent), var(--accent2));
+    -webkit-background-clip: text; background-clip: text; color: transparent;
+  }
+  .sub { color: var(--muted); margin: 0; }
+
+  .card {
+    background: var(--card); border: 1px solid var(--card-border); border-radius: 24px;
+    padding: 22px; margin-bottom: 20px; box-shadow: var(--shadow);
+    -webkit-backdrop-filter: blur(14px); backdrop-filter: blur(14px);
+  }
+  .card h2 { margin: 0 0 14px; font-size: 1.05rem; display: flex; align-items: center; gap: 10px; }
+  .badge {
+    min-width: 28px; padding: 2px 10px; text-align: center; font-size: .82rem; font-weight: 600;
+    color: #fff; border-radius: 999px; background: linear-gradient(120deg, var(--accent), var(--accent2));
+  }
+
+  label { display: block; font-size: .82rem; color: var(--muted); margin: 0 0 6px 4px; }
+  input, textarea {
+    width: 100%; padding: 13px 16px; margin-bottom: 14px; font: inherit; color: var(--text);
+    background: var(--input); border: 1.5px solid var(--line); border-radius: 14px; outline: none;
+    transition: border-color .2s, box-shadow .2s;
+  }
+  textarea { resize: vertical; min-height: 92px; }
+  input::placeholder, textarea::placeholder { color: var(--muted); opacity: .7; }
+  input:focus, textarea:focus { border-color: var(--accent); box-shadow: 0 0 0 4px rgba(124,108,240,.18); }
+
+  .row { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+  .count { font-size: .8rem; color: var(--muted); }
+
+  button { font: inherit; cursor: pointer; border: 0; }
+  #add {
+    padding: 12px 26px; color: #fff; font-weight: 600; border-radius: 14px;
+    background: linear-gradient(120deg, var(--accent), #9a8cff);
+    box-shadow: 0 8px 20px rgba(124,108,240,.35); transition: transform .15s, box-shadow .15s;
+  }
+  #add:hover { transform: translateY(-2px); box-shadow: 0 12px 26px rgba(124,108,240,.42); }
+  #add:active { transform: translateY(0); }
+
+  #status { min-height: 1.3em; margin-top: 12px; font-size: .88rem; color: var(--danger); }
+
+  .entry {
+    display: flex; gap: 14px; align-items: flex-start; padding: 16px 4px;
+    border-bottom: 1px solid var(--line);
+  }
+  .entry:last-child { border-bottom: 0; }
+  .entry.new { animation: pop .45s ease both; }
+  @keyframes pop { from { opacity: 0; transform: translateY(10px) scale(.98); } to { opacity: 1; transform: none; } }
+
+  .avatar {
+    flex: 0 0 44px; width: 44px; height: 44px; border-radius: 50%; display: grid; place-items: center;
+    color: #fff; font-weight: 700; font-size: 1.05rem; text-transform: uppercase;
+    box-shadow: 0 6px 14px rgba(0,0,0,.12);
+  }
+  .info { flex: 1; min-width: 0; }
+  .info strong { display: block; }
+  .info p { margin: 4px 0 0; color: var(--muted); line-height: 1.5; overflow-wrap: anywhere; white-space: pre-wrap; }
+
+  button.del {
+    padding: 7px 14px; font-size: .82rem; color: var(--danger); background: transparent;
+    border: 1.5px solid rgba(239,91,123,.35); border-radius: 999px; transition: background .2s, color .2s;
+  }
+  button.del:hover { background: var(--danger); color: #fff; border-color: var(--danger); }
+
+  .empty { text-align: center; color: var(--muted); padding: 28px 0 10px; }
+  .empty .emoji { font-size: 2.2rem; display: block; margin-bottom: 8px; }
+
+  footer { text-align: center; color: var(--muted); font-size: .8rem; margin-top: 24px; }
+  @media (max-width: 480px) { .card { padding: 18px; border-radius: 20px; } }
 </style>
 </head>
 <body>
 <main>
-  <h1>Buku Tamu Digital Kampus</h1>
-  <div class="sub">Telkom University &middot; Cloud Computing</div>
+  <header>
+    <span class="chip">Telkom University &middot; Cloud Computing</span>
+    <h1>Buku Tamu Digital Kampus</h1>
+    <p class="sub">Tinggalkan jejakmu dan sapa kami di sini.</p>
+  </header>
 
-  <div class="card">
-    <input id="name" placeholder="Nama tamu" maxlength="100">
-    <textarea id="message" rows="3" placeholder="Pesan / kesan" maxlength="500"></textarea>
-    <button id="add">Kirim</button>
+  <section class="card">
+    <h2>Tulis pesan</h2>
+    <label for="name">Nama</label>
+    <input id="name" placeholder="Siapa namamu?" maxlength="100" autocomplete="off">
+    <label for="message">Pesan / kesan</label>
+    <textarea id="message" rows="3" placeholder="Tulis pesan atau kesanmu..." maxlength="500"></textarea>
+    <div class="row">
+      <span class="count"><span id="chars">0</span>/500</span>
+      <button id="add">Kirim pesan</button>
+    </div>
     <div id="status"></div>
-  </div>
+  </section>
 
-  <div class="card">
-    <strong>Daftar tamu (<span id="total">0</span>)</strong>
+  <section class="card">
+    <h2>Daftar tamu <span class="badge" id="total">0</span></h2>
     <div id="list"></div>
-  </div>
+  </section>
+
+  <footer>Dibuat dengan Docker &middot; Nginx &middot; Python</footer>
 </main>
 
 <script>
@@ -50,30 +149,65 @@ const API_BASE = ['', '80', '8081'].includes(location.port) ? '/api' : 'http://l
 const API = API_BASE + '/messages';
 const $ = id => document.getElementById(id);
 
+const COLORS = [
+  ['#7c6cf0', '#a99bff'], ['#4fd1b5', '#7fe6cf'], ['#ff8fab', '#ffb3c6'],
+  ['#ffb347', '#ffd08a'], ['#5ab0ff', '#8fccff'], ['#c084fc', '#dcb4ff']
+];
+let lastSignature = '';
+
 function setStatus(t) { $('status').textContent = t; }
 
+function colorFor(name) {
+  let h = 0;
+  for (const ch of name) h = (h * 31 + ch.charCodeAt(0)) >>> 0;
+  const [a, b] = COLORS[h % COLORS.length];
+  return 'linear-gradient(135deg,' + a + ',' + b + ')';
+}
+
 function render(items) {
+  const signature = JSON.stringify(items);
+  if (signature === lastSignature) return;   // tidak render ulang kalau data sama
+  const previousCount = lastSignature ? JSON.parse(lastSignature).length : 0;
+  lastSignature = signature;
+
   $('total').textContent = items.length;
   const list = $('list');
   list.innerHTML = '';
+
   if (!items.length) {
-    list.innerHTML = '<p style="color:var(--muted)">Belum ada tamu.</p>';
+    const empty = document.createElement('div');
+    empty.className = 'empty';
+    const emoji = document.createElement('span');
+    emoji.className = 'emoji';
+    emoji.textContent = '\u2728';
+    empty.append(emoji, 'Belum ada tamu. Jadilah yang pertama!');
+    list.append(empty);
     return;
   }
+
   items.forEach((it, i) => {
     const row = document.createElement('div');
-    row.className = 'entry';
+    row.className = 'entry' + (i >= previousCount ? ' new' : '');
+
+    const avatar = document.createElement('div');
+    avatar.className = 'avatar';
+    avatar.style.background = colorFor(it.name);
+    avatar.textContent = (it.name.trim()[0] || '?');
+
     const info = document.createElement('div');
+    info.className = 'info';
     const n = document.createElement('strong');
     n.textContent = it.name;
     const m = document.createElement('p');
     m.textContent = it.message;
     info.append(n, m);
+
     const b = document.createElement('button');
     b.className = 'del';
     b.textContent = 'Hapus';
     b.onclick = () => remove(i);
-    row.append(info, b);
+
+    row.append(avatar, info, b);
     list.append(row);
   });
 }
@@ -97,7 +231,7 @@ async function add() {
     });
     const json = await res.json();
     if (!res.ok) { setStatus(json.error); return; }
-    $('name').value = ''; $('message').value = ''; setStatus('');
+    $('name').value = ''; $('message').value = ''; $('chars').textContent = '0'; setStatus('');
     load();
   } catch (e) { setStatus('Gagal mengirim data.'); }
 }
@@ -111,6 +245,8 @@ async function remove(index) {
 }
 
 $('add').onclick = add;
+$('message').addEventListener('input', () => { $('chars').textContent = $('message').value.length; });
+$('message').addEventListener('keydown', e => { if (e.key === 'Enter' && (e.ctrlKey || e.metaKey)) add(); });
 load();
 setInterval(load, 5000);  // refresh otomatis
 </script>
