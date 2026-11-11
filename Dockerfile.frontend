@@ -1,0 +1,14 @@
+# ---------- Frontend Docker Image ----------
+FROM nginx:alpine
+
+# Salin file HTML ke direktori Nginx
+COPY index.html /usr/share/nginx/html/index.html
+
+# Salin konfigurasi Nginx
+COPY nginx.conf /etc/nginx/conf.d/default.conf
+
+# Expose port HTTP
+EXPOSE 80
+
+# Jalankan Nginx
+CMD ["nginx", "-g", "daemon off;"]
