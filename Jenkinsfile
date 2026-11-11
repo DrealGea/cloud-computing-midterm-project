@@ -1,3 +1,4 @@
+groovy
 pipeline {
     agent any
 
@@ -34,6 +35,30 @@ pipeline {
             }
         }
 
+        // Memeriksa environment Docker yang digunakan Jenkins
+        stage('Check Docker Version') {
+            steps {
+                echo 'Memeriksa versi Docker, Compose, dan Buildx...'
+
+                sh '''
+                    echo "========== DOCKER VERSION =========="
+                    docker version
+
+                    echo "========== DOCKER COMPOSE VERSION =========="
+                    docker compose version
+
+                    echo "========== DOCKER BUILDX VERSION =========="
+                    docker buildx version
+
+                    echo "========== BUILDX BUILDER =========="
+                    docker buildx ls
+
+                    echo "========== DOCKER INFO =========="
+                    docker info
+                '''
+            }
+        }
+
         stage('Build Image') {
             steps {
                 echo 'Membangun image backend...'
@@ -44,6 +69,7 @@ pipeline {
         stage('Automated Deployment') {
             steps {
                 echo 'Deploy stack (Named Volume tetap terjaga)...'
+
                 // JANGAN pakai "down -v": itu akan menghapus Named Volume
                 sh 'docker compose up -d --force-recreate --remove-orphans'
                 sh 'docker compose ps'
@@ -53,6 +79,7 @@ pipeline {
         stage('Health Check') {
             steps {
                 echo 'Memeriksa kesehatan backend dan frontend...'
+
                 sh '''
                     for i in $(seq 1 15); do
                         if curl -fsS "$BACKEND_URL/health" && curl -fsS "$FRONTEND_URL/api/health"; then
@@ -60,9 +87,11 @@ pipeline {
                             echo "Health check berhasil."
                             exit 0
                         fi
+
                         echo "Menunggu layanan siap (percobaan $i/15)..."
                         sleep 2
                     done
+
                     echo "Health check GAGAL."
                     exit 1
                 '''
@@ -74,6 +103,7 @@ pipeline {
         success {
             echo 'Pipeline sukses: aplikasi berjalan di port 8081.'
         }
+
         failure {
             echo 'Pipeline gagal. Menampilkan log kontainer terakhir...'
             sh 'docker compose logs --tail=50 || true'
