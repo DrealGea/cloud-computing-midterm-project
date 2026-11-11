@@ -6,7 +6,7 @@ pipeline {
         disableConcurrentBuilds()
     }
 
-    // Dipicu otomatis oleh GitHub Webhook setiap git push
+    // Otomatis dipicu GitHub Webhook
     triggers {
         githubPush()
     }
@@ -18,94 +18,135 @@ pipeline {
 
     stages {
 
+        // ---------- STAGE 1: CHECKOUT ----------
         stage('Checkout') {
             steps {
                 echo 'Mengambil kode terbaru dari GitHub...'
+
                 checkout scm
+
                 sh 'ls -la'
             }
         }
 
+        // ---------- STAGE 2: SYNTAX CHECK ----------
         stage('Syntax Check') {
             steps {
-                echo 'Memeriksa sintaks Python dan konfigurasi Compose...'
-                sh 'python3 -m py_compile app.py'
-                sh 'docker compose config -q'
+                echo 'Memeriksa sintaks Python dan Docker Compose...'
+
+                sh '''
+                    python3 -m py_compile app.py
+                    docker compose config -q
+                '''
             }
         }
 
-        // Memeriksa environment Docker yang digunakan Jenkins
+        // ---------- STAGE 3: CHECK DOCKER ----------
         stage('Check Docker Version') {
             steps {
-                echo 'Memeriksa versi Docker, Compose, dan Buildx...'
+                echo 'Memeriksa Docker, Compose, dan Buildx...'
 
                 sh '''
                     echo "========== DOCKER VERSION =========="
                     docker version
 
-                    echo "========== DOCKER COMPOSE VERSION =========="
+                    echo "========== DOCKER COMPOSE =========="
                     docker compose version
 
-                    echo "========== DOCKER BUILDX VERSION =========="
+                    echo "========== DOCKER BUILDX =========="
                     docker buildx version
 
                     echo "========== BUILDX BUILDER =========="
                     docker buildx ls
-
-                    echo "========== DOCKER INFO =========="
-                    docker info
                 '''
             }
         }
 
-        stage('Build Image') {
+        // ---------- STAGE 4: BUILD IMAGES ----------
+        stage('Build Images') {
             steps {
-                echo 'Membangun image backend...'
-                sh 'docker compose build backend'
+                echo 'Membangun image backend dan frontend...'
+
+                sh '''
+                    docker compose build
+                '''
             }
         }
 
+        // ---------- STAGE 5: DEPLOYMENT ----------
         stage('Automated Deployment') {
             steps {
-                echo 'Deploy stack (Named Volume tetap terjaga)...'
+                echo 'Melakukan deployment aplikasi...'
 
-                // JANGAN pakai "down -v": itu akan menghapus Named Volume
-                sh 'docker compose up -d --force-recreate --remove-orphans'
-                sh 'docker compose ps'
+                sh '''
+                    docker compose up -d --force-recreate --remove-orphans
+
+                    echo "========== CONTAINER STATUS =========="
+
+                    docker compose ps
+                '''
             }
         }
 
+        // ---------- STAGE 6: HEALTH CHECK ----------
         stage('Health Check') {
             steps {
                 echo 'Memeriksa kesehatan backend dan frontend...'
 
                 sh '''
+                    set +e
+
                     for i in $(seq 1 15); do
-                        if curl -fsS "$BACKEND_URL/health" && curl -fsS "$FRONTEND_URL/api/health"; then
-                            echo ""
-                            echo "Health check berhasil."
+
+                        echo "Health check attempt $i/15"
+
+                        BACKEND_STATUS=$(curl -s -o /dev/null -w "%{http_code}" "$BACKEND_URL/health")
+                        FRONTEND_STATUS=$(curl -s -o /dev/null -w "%{http_code}" "$FRONTEND_URL/")
+
+                        echo "Backend HTTP: $BACKEND_STATUS"
+                        echo "Frontend HTTP: $FRONTEND_STATUS"
+
+                        if [ "$BACKEND_STATUS" = "200" ] && [ "$FRONTEND_STATUS" = "200" ]; then
+                            echo "Health check berhasil!"
                             exit 0
                         fi
 
-                        echo "Menunggu layanan siap (percobaan $i/15)..."
                         sleep 2
                     done
 
-                    echo "Health check GAGAL."
+                    echo "Health check GAGAL!"
+
                     exit 1
                 '''
             }
         }
     }
 
+    // ---------- POST ACTIONS ----------
     post {
+
         success {
-            echo 'Pipeline sukses: aplikasi berjalan di port 8081.'
+            echo '''
+            ==========================================
+                 PIPELINE BERHASIL!
+            ==========================================
+            Backend  : http://localhost:5000
+            Frontend : http://localhost:8081
+            ==========================================
+            '''
         }
 
         failure {
-            echo 'Pipeline gagal. Menampilkan log kontainer terakhir...'
-            sh 'docker compose logs --tail=50 || true'
+            echo 'Pipeline gagal. Memeriksa log container...'
+
+            sh '''
+                docker compose ps || true
+                docker compose logs --tail=50 || true
+            '''
+        }
+
+        always {
+            echo 'Jenkins Pipeline selesai.'
         }
     }
 }
