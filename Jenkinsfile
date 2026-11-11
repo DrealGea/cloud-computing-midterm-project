@@ -6,47 +6,50 @@ pipeline {
         disableConcurrentBuilds()
     }
 
-    // Otomatis dipicu GitHub Webhook
-    triggers {
-        githubPush()
-    }
-
     environment {
-        BACKEND_URL  = 'http://localhost:5000'
-        FRONTEND_URL = 'http://localhost:8081'
+        COMPOSE_PROJECT_NAME = 'guestbook'
+        BACKEND_URL = 'http://host.docker.internal:5000/health'
+        FRONTEND_URL = 'http://host.docker.internal:8081/'
     }
 
     stages {
 
-        // ---------- STAGE 1: CHECKOUT ----------
         stage('Checkout') {
             steps {
                 echo 'Mengambil kode terbaru dari GitHub...'
 
                 checkout scm
 
-                sh 'ls -la'
+                sh '''
+                    echo "========== PROJECT FILES =========="
+                    ls -la
+                '''
             }
         }
 
-        // ---------- STAGE 2: SYNTAX CHECK ----------
         stage('Syntax Check') {
             steps {
                 echo 'Memeriksa sintaks Python dan Docker Compose...'
 
                 sh '''
+                    set -e
+
                     python3 -m py_compile app.py
+
                     docker compose config -q
+
+                    echo "Syntax check berhasil!"
                 '''
             }
         }
 
-        // ---------- STAGE 3: CHECK DOCKER ----------
         stage('Check Docker Version') {
             steps {
                 echo 'Memeriksa Docker, Compose, dan Buildx...'
 
                 sh '''
+                    set -e
+
                     echo "========== DOCKER VERSION =========="
                     docker version
 
@@ -62,23 +65,25 @@ pipeline {
             }
         }
 
-        // ---------- STAGE 4: BUILD IMAGES ----------
         stage('Build Images') {
             steps {
                 echo 'Membangun image backend dan frontend...'
 
                 sh '''
+                    set -e
+
                     docker compose build
                 '''
             }
         }
 
-        // ---------- STAGE 5: DEPLOYMENT ----------
         stage('Automated Deployment') {
             steps {
                 echo 'Melakukan deployment aplikasi...'
 
                 sh '''
+                    set -e
+
                     docker compose up -d --force-recreate --remove-orphans
 
                     echo "========== CONTAINER STATUS =========="
@@ -88,7 +93,6 @@ pipeline {
             }
         }
 
-        // ---------- STAGE 6: HEALTH CHECK ----------
         stage('Health Check') {
             steps {
                 echo 'Memeriksa kesehatan backend dan frontend...'
@@ -96,25 +100,48 @@ pipeline {
                 sh '''
                     set +e
 
+                    BACKEND_STATUS=""
+                    FRONTEND_STATUS=""
+
                     for i in $(seq 1 15); do
 
                         echo "Health check attempt $i/15"
 
-                        BACKEND_STATUS=$(curl -s -o /dev/null -w "%{http_code}" "$BACKEND_URL/health")
-                        FRONTEND_STATUS=$(curl -s -o /dev/null -w "%{http_code}" "$FRONTEND_URL/")
+                        BACKEND_STATUS=$(curl -s \
+                            -o /dev/null \
+                            -w "%{http_code}" \
+                            --connect-timeout 5 \
+                            --max-time 10 \
+                            "$BACKEND_URL")
+
+                        FRONTEND_STATUS=$(curl -s \
+                            -o /dev/null \
+                            -w "%{http_code}" \
+                            --connect-timeout 5 \
+                            --max-time 10 \
+                            "$FRONTEND_URL")
 
                         echo "Backend HTTP: $BACKEND_STATUS"
                         echo "Frontend HTTP: $FRONTEND_STATUS"
 
-                        if [ "$BACKEND_STATUS" = "200" ] && [ "$FRONTEND_STATUS" = "200" ]; then
-                            echo "Health check berhasil!"
+                        if [ "$BACKEND_STATUS" = "200" ] && \
+                           [ "$FRONTEND_STATUS" = "200" ]; then
+
+                            echo "=================================="
+                            echo "HEALTH CHECK BERHASIL!"
+                            echo "Backend: HTTP 200"
+                            echo "Frontend: HTTP 200"
+                            echo "=================================="
+
                             exit 0
                         fi
 
                         sleep 2
                     done
 
-                    echo "Health check GAGAL!"
+                    echo "=================================="
+                    echo "HEALTH CHECK GAGAL!"
+                    echo "=================================="
 
                     exit 1
                 '''
@@ -122,16 +149,24 @@ pipeline {
         }
     }
 
-    // ---------- POST ACTIONS ----------
     post {
 
         success {
             echo '''
             ==========================================
-                 PIPELINE BERHASIL!
+                 JENKINS PIPELINE BERHASIL!
             ==========================================
-            Backend  : http://localhost:5000
-            Frontend : http://localhost:8081
+                 Backend  : Running
+                 Frontend : Running
+                 Build    : Success
+                 Deploy   : Success
+                 Health   : Passed
+
+                 Frontend:
+                 http://localhost:8081
+
+                 Backend:
+                 http://localhost:5000/health
             ==========================================
             '''
         }
@@ -140,8 +175,17 @@ pipeline {
             echo 'Pipeline gagal. Memeriksa log container...'
 
             sh '''
-                docker compose ps || true
+                echo "========== CONTAINER STATUS =========="
+
+                docker compose ps
+
+                echo "========== CONTAINER LOGS =========="
+
                 docker compose logs --tail=50 || true
+
+                echo "========== DOCKER NETWORK =========="
+
+                docker network ls
             '''
         }
 
