@@ -9,7 +9,7 @@ Tugas Kelompok UTS Cloud Computing, Telkom University
 |----|------|-----|
 | 1  | Dariele Zebada Sanuwu Gea | 101012300089 |
 | 2  | Sattya Haa Prabu Tejo Putri | 101012330223 |
-| 3  | _isi nama_ | _isi NIM_ |
+| 3  | Rachel Triyana Br Situmorang | 101012330401 |
 
 **Studi kasus:** #1 Buku Tamu Digital Kampus (Digital Guestbook)
 
